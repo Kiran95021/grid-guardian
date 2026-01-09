@@ -17,6 +17,7 @@ const Index = () => {
   const [obstacleDetected, setObstacleDetected] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
+  const [intersectionReached, setIntersectionReached] = useState(false);
 
   const handleJWalker = useCallback(() => {
     if (jWalkerActive) return;
@@ -44,10 +45,15 @@ const Index = () => {
     setTimeout(() => setObstacleDetected(false), 500);
   }, []);
 
+  const handleIntersectionReached = useCallback(() => {
+    setIntersectionReached(true);
+    setTimeout(() => setIntersectionReached(false), 100);
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Scanline overlay */}
-      <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden opacity-30">
+      <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden opacity-20">
         <div className="w-full h-1 bg-primary/10 scanline" />
       </div>
 
@@ -89,6 +95,7 @@ const Index = () => {
                 trafficSurge={trafficSurge}
                 jWalkerActive={jWalkerActive}
                 onObstacleDetected={handleObstacleDetected}
+                onIntersectionReached={handleIntersectionReached}
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -111,6 +118,7 @@ const Index = () => {
               <DecisionFeed 
                 emergencyEvent={jWalkerActive}
                 fogActive={fogActive}
+                intersectionReached={intersectionReached}
               />
             </div>
           </div>
@@ -119,7 +127,9 @@ const Index = () => {
         {/* Footer */}
         <footer className="glass-panel p-3 flex items-center justify-between text-[10px] text-muted-foreground font-mono">
           <div className="flex items-center gap-4">
-            <span>AV-TWIN v3.2.1</span>
+            <span className="text-primary font-semibold">SIMVERSE XAI</span>
+            <span>|</span>
+            <span>v3.2.1</span>
             <span>|</span>
             <span>BUILD: 2024.01.15</span>
             <span>|</span>
@@ -130,7 +140,7 @@ const Index = () => {
             <span>|</span>
             <span>FPS: 60</span>
             <span>|</span>
-            <span>© AUTONOMOUS SYSTEMS LAB</span>
+            <span>URBAN AUTONOMY & SAFETY VALIDATION ENGINE</span>
           </div>
         </footer>
       </div>

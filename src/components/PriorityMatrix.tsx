@@ -9,11 +9,12 @@ interface PriorityMatrixProps {
 }
 
 const PriorityMatrix = ({ emergencyMode, fogMode, trafficSurge }: PriorityMatrixProps) => {
+  // Updated categories based on research requirements
   const baseData = [
-    { factor: "Safety", value: 95, fullMark: 100 },
-    { factor: "Compliance", value: 88, fullMark: 100 },
-    { factor: "Efficiency", value: 72, fullMark: 100 },
-    { factor: "Comfort", value: 65, fullMark: 100 },
+    { factor: "Safety Rigor", value: 95, fullMark: 100 },
+    { factor: "Path Efficiency", value: 72, fullMark: 100 },
+    { factor: "Rule Compliance", value: 88, fullMark: 100 },
+    { factor: "Passenger Comfort", value: 65, fullMark: 100 },
   ];
 
   // Adjust values based on active scenarios
@@ -21,19 +22,19 @@ const PriorityMatrix = ({ emergencyMode, fogMode, trafficSurge }: PriorityMatrix
     let value = item.value;
     
     if (emergencyMode) {
-      if (item.factor === "Safety") value = 100;
-      if (item.factor === "Efficiency") value = 30;
-      if (item.factor === "Comfort") value = 20;
+      if (item.factor === "Safety Rigor") value = 100;
+      if (item.factor === "Path Efficiency") value = 30;
+      if (item.factor === "Passenger Comfort") value = 20;
     }
     
     if (fogMode) {
-      if (item.factor === "Safety") value = Math.min(value, 85);
-      if (item.factor === "Efficiency") value = Math.min(value, 50);
+      if (item.factor === "Safety Rigor") value = Math.min(value, 85);
+      if (item.factor === "Path Efficiency") value = Math.min(value, 50);
     }
     
     if (trafficSurge) {
-      if (item.factor === "Efficiency") value = Math.max(value, 85);
-      if (item.factor === "Comfort") value = Math.min(value, 45);
+      if (item.factor === "Path Efficiency") value = Math.max(value, 85);
+      if (item.factor === "Passenger Comfort") value = Math.min(value, 45);
     }
     
     return { ...item, value };
@@ -41,12 +42,16 @@ const PriorityMatrix = ({ emergencyMode, fogMode, trafficSurge }: PriorityMatrix
 
   const getFactorIcon = (factor: string) => {
     switch (factor) {
-      case "Safety": return Shield;
-      case "Compliance": return Gauge;
-      case "Efficiency": return Route;
-      case "Comfort": return Users;
+      case "Safety Rigor": return Shield;
+      case "Path Efficiency": return Route;
+      case "Rule Compliance": return Gauge;
+      case "Passenger Comfort": return Users;
       default: return Shield;
     }
+  };
+
+  const getFactorKey = (factor: string) => {
+    return factor.toLowerCase().replace(" ", "-");
   };
 
   return (
@@ -63,10 +68,10 @@ const PriorityMatrix = ({ emergencyMode, fogMode, trafficSurge }: PriorityMatrix
             />
             <PolarAngleAxis 
               dataKey="factor" 
-              tick={{ fill: "hsl(200 100% 95%)", fontSize: 10, fontFamily: "JetBrains Mono" }}
+              tick={{ fill: "hsl(200 100% 95%)", fontSize: 9, fontFamily: "JetBrains Mono" }}
             />
             <PolarRadiusAxis 
-              angle={30} 
+              angle={45} 
               domain={[0, 100]} 
               tick={{ fill: "hsl(200 20% 55%)", fontSize: 8 }}
               axisLine={false}
@@ -93,21 +98,21 @@ const PriorityMatrix = ({ emergencyMode, fogMode, trafficSurge }: PriorityMatrix
           return (
             <motion.div
               key={item.factor}
-              className={`flex items-center gap-2 p-2 rounded border ${
+              className={`flex items-center gap-2 p-2 rounded-lg border backdrop-blur-sm ${
                 isHighPriority 
                   ? "border-neon-green/30 bg-neon-green/5" 
                   : isLowPriority 
-                    ? "border-neon-yellow/30 bg-neon-yellow/5"
+                    ? "border-accent/30 bg-accent/5"
                     : "border-border/20 bg-card/30"
               }`}
-              animate={{ scale: emergencyMode && item.factor === "Safety" ? [1, 1.02, 1] : 1 }}
-              transition={{ duration: 0.5, repeat: emergencyMode && item.factor === "Safety" ? Infinity : 0 }}
+              animate={{ scale: emergencyMode && item.factor === "Safety Rigor" ? [1, 1.02, 1] : 1 }}
+              transition={{ duration: 0.5, repeat: emergencyMode && item.factor === "Safety Rigor" ? Infinity : 0 }}
             >
               <Icon className={`w-3 h-3 ${
-                isHighPriority ? "text-neon-green" : isLowPriority ? "text-neon-yellow" : "text-primary"
+                isHighPriority ? "text-neon-green" : isLowPriority ? "text-accent" : "text-primary"
               }`} />
               <div className="flex-1 min-w-0">
-                <div className="text-[9px] text-muted-foreground uppercase">{item.factor}</div>
+                <div className="text-[8px] text-muted-foreground uppercase truncate">{item.factor}</div>
                 <div className="flex items-center gap-1">
                   <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
                     <motion.div
@@ -115,12 +120,12 @@ const PriorityMatrix = ({ emergencyMode, fogMode, trafficSurge }: PriorityMatrix
                       animate={{ width: `${item.value}%` }}
                       transition={{ duration: 0.5 }}
                       className={`h-full ${
-                        isHighPriority ? "bg-neon-green" : isLowPriority ? "bg-neon-yellow" : "bg-primary"
+                        isHighPriority ? "bg-neon-green" : isLowPriority ? "bg-accent" : "bg-primary"
                       }`}
                     />
                   </div>
                   <span className={`text-[10px] font-mono ${
-                    isHighPriority ? "text-neon-green" : isLowPriority ? "text-neon-yellow" : "text-primary"
+                    isHighPriority ? "text-neon-green" : isLowPriority ? "text-accent" : "text-primary"
                   }`}>
                     {item.value}%
                   </span>
@@ -136,9 +141,9 @@ const PriorityMatrix = ({ emergencyMode, fogMode, trafficSurge }: PriorityMatrix
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="mt-3 p-2 bg-neon-red/10 border border-neon-red/30 rounded text-center"
+          className="mt-3 p-2 bg-accent/10 border border-accent/30 rounded-lg text-center"
         >
-          <span className="text-[10px] text-neon-red font-mono blink-alert">
+          <span className="text-[10px] text-accent font-mono blink-alert">
             ⚠ SAFETY OVERRIDE ACTIVE
           </span>
         </motion.div>
