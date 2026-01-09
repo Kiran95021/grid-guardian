@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Car, MapPin, Clock, Navigation, Shield, Gauge, Radio } from "lucide-react";
+import { Car, MapPin, Clock, Navigation, Shield, Gauge } from "lucide-react";
 
 interface MissionHeaderProps {
   emergencyMode: boolean;
@@ -37,10 +37,10 @@ const MissionHeader = ({ emergencyMode }: MissionHeaderProps) => {
           
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="font-display text-2xl font-black tracking-wider">
-                <span className="text-gradient-cyber">SIM</span>
-                <span className="text-foreground">VERSE</span>
-                <span className="text-accent ml-2">XAI</span>
+              <h1 className="font-display text-xl font-black tracking-wider">
+                <span className="text-gradient-cyber">Urban</span>
+                <span className="text-foreground">Drive</span>
+                <span className="text-accent ml-2">AI</span>
               </h1>
               {/* Live Pulse Indicator */}
               <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-neon-green/10 border border-neon-green/30">
@@ -53,7 +53,7 @@ const MissionHeader = ({ emergencyMode }: MissionHeaderProps) => {
               </div>
             </div>
             <p className="text-[11px] text-muted-foreground font-mono">
-              URBAN AUTONOMY & SAFETY VALIDATION ENGINE
+              SMART AUTONOMOUS VEHICLE SIMULATOR
             </p>
           </div>
         </div>

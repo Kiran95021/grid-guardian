@@ -71,13 +71,14 @@ const DecisionFeed = ({ emergencyEvent, fogActive, intersectionReached }: Decisi
   };
 
   useEffect(() => {
-    // Initial logs
-    setLogs(Array.from({ length: 5 }, () => generateLog()));
+    // Initial logs - limit to 3
+    setLogs(Array.from({ length: 3 }, () => generateLog()));
 
     const interval = setInterval(() => {
       setLogs((prev) => {
         const newLogs = [...prev, generateLog()];
-        if (newLogs.length > 20) newLogs.shift();
+        // Limit to 5 entries for clarity
+        while (newLogs.length > 5) newLogs.shift();
         return newLogs;
       });
     }, 3000);

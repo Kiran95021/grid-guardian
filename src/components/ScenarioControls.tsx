@@ -1,22 +1,28 @@
 import { motion } from "framer-motion";
-import { PersonStanding, Cloud, Car, Zap, TriangleAlert, Activity } from "lucide-react";
+import { PersonStanding, Cloud, Car, Zap, TriangleAlert, Play, RotateCcw } from "lucide-react";
 
 interface ScenarioControlsProps {
   onJWalker: () => void;
   onFog: () => void;
   onTrafficSurge: () => void;
+  onDemoMode: () => void;
+  onReset: () => void;
   fogActive: boolean;
   trafficActive: boolean;
   jWalkerActive: boolean;
+  demoRunning: boolean;
 }
 
 const ScenarioControls = ({
   onJWalker,
   onFog,
   onTrafficSurge,
+  onDemoMode,
+  onReset,
   fogActive,
   trafficActive,
   jWalkerActive,
+  demoRunning,
 }: ScenarioControlsProps) => {
   const scenarios = [
     {
@@ -121,6 +127,34 @@ const ScenarioControls = ({
             </motion.button>
           );
         })}
+      </div>
+
+      {/* Demo Mode & Reset Buttons */}
+      <div className="mt-4 pt-3 border-t border-border/30 space-y-2">
+        <motion.button
+          onClick={onDemoMode}
+          disabled={demoRunning}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className={`w-full p-3 rounded-lg border flex items-center justify-center gap-2 font-semibold transition-all ${
+            demoRunning
+              ? "border-neon-green/50 bg-neon-green/20 text-neon-green cursor-not-allowed"
+              : "border-primary/50 bg-primary/20 text-primary hover:bg-primary/30"
+          }`}
+        >
+          <Play className="w-4 h-4" />
+          {demoRunning ? "DEMO RUNNING..." : "START DEMO MODE"}
+        </motion.button>
+
+        <motion.button
+          onClick={onReset}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="w-full p-2 rounded-lg border border-muted/50 bg-muted/10 text-muted-foreground hover:bg-muted/20 flex items-center justify-center gap-2 text-sm"
+        >
+          <RotateCcw className="w-3 h-3" />
+          RESET
+        </motion.button>
       </div>
 
       {/* Active Scenarios Counter */}

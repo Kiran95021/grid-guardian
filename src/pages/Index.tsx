@@ -8,6 +8,8 @@ import ResponseTimeGraph from "@/components/ResponseTimeGraph";
 import SystemStatus from "@/components/SystemStatus";
 import PerceptionConfidence from "@/components/PerceptionConfidence";
 import AlertBanner from "@/components/AlertBanner";
+import DecisionLogic from "@/components/DecisionLogic";
+import ExplainableAIPanel from "@/components/ExplainableAIPanel";
 
 const Index = () => {
   const [fogActive, setFogActive] = useState(false);
@@ -18,6 +20,13 @@ const Index = () => {
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
   const [intersectionReached, setIntersectionReached] = useState(false);
+  const [demoRunning, setDemoRunning] = useState(false);
+  
+  // Explainable AI state
+  const [pedestrianDistance, setPedestrianDistance] = useState(50);
+  const [collisionProbability, setCollisionProbability] = useState(5);
+  const [actionTaken, setActionTaken] = useState<"BRAKING" | "CONTINUE">("CONTINUE");
+  const [xaiReason, setXaiReason] = useState("No immediate hazards detected. Continuing normal operation.");
 
   const handleJWalker = useCallback(() => {
     if (jWalkerActive) return;
@@ -26,9 +35,20 @@ const Index = () => {
     setShowAlert(true);
     setAlertMessage("EMERGENCY BRAKING ENGAGED - Pedestrian detected crossing outside designated area");
     
+    // Update XAI panel
+    setPedestrianDistance(8);
+    setCollisionProbability(87);
+    setActionTaken("BRAKING");
+    setXaiReason("High collision risk due to sudden pedestrian crossing.");
+    
     setTimeout(() => {
       setJWalkerActive(false);
       setEmergencyMode(false);
+      // Reset XAI values
+      setPedestrianDistance(50);
+      setCollisionProbability(5);
+      setActionTaken("CONTINUE");
+      setXaiReason("No immediate hazards detected. Continuing normal operation.");
     }, 3000);
   }, [jWalkerActive]);
 
@@ -50,6 +70,77 @@ const Index = () => {
     setTimeout(() => setIntersectionReached(false), 100);
   }, []);
 
+  const handleDemoMode = useCallback(() => {
+    if (demoRunning) return;
+    setDemoRunning(true);
+    
+    // Step 1: Vehicle approaches intersection (0-2s)
+    setTimeout(() => {
+      setIntersectionReached(true);
+      setPedestrianDistance(35);
+      setCollisionProbability(15);
+    }, 500);
+
+    // Step 2: Pedestrian appears (2s)
+    setTimeout(() => {
+      setPedestrianDistance(20);
+      setCollisionProbability(45);
+    }, 2000);
+
+    // Step 3: Collision risk exceeds threshold (3s)
+    setTimeout(() => {
+      setPedestrianDistance(12);
+      setCollisionProbability(72);
+      setActionTaken("BRAKING");
+      setXaiReason("Pedestrian detected crossing. Collision probability exceeds safety threshold.");
+    }, 3000);
+
+    // Step 4: Emergency braking (3.5s)
+    setTimeout(() => {
+      setJWalkerActive(true);
+      setEmergencyMode(true);
+      setShowAlert(true);
+      setAlertMessage("EMERGENCY BRAKING ENGAGED - Pedestrian detected crossing outside designated area");
+      setPedestrianDistance(5);
+      setCollisionProbability(92);
+      setXaiReason("High collision risk due to sudden pedestrian crossing.");
+    }, 3500);
+
+    // Step 5: Vehicle stopped safely (5s)
+    setTimeout(() => {
+      setCollisionProbability(0);
+      setXaiReason("Vehicle stopped. Pedestrian cleared. Resuming normal operation.");
+    }, 5000);
+
+    // Step 6: Reset (7s)
+    setTimeout(() => {
+      setJWalkerActive(false);
+      setEmergencyMode(false);
+      setPedestrianDistance(50);
+      setCollisionProbability(5);
+      setActionTaken("CONTINUE");
+      setXaiReason("No immediate hazards detected. Continuing normal operation.");
+      setDemoRunning(false);
+      setIntersectionReached(false);
+    }, 7000);
+  }, [demoRunning]);
+
+  const handleReset = useCallback(() => {
+    setFogActive(false);
+    setTrafficSurge(false);
+    setJWalkerActive(false);
+    setEmergencyMode(false);
+    setObstacleDetected(false);
+    setShowAlert(false);
+    setAlertMessage("");
+    setIntersectionReached(false);
+    setDemoRunning(false);
+    setPedestrianDistance(50);
+    setCollisionProbability(5);
+    setActionTaken("CONTINUE");
+    setXaiReason("No immediate hazards detected. Continuing normal operation.");
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Scanline overlay */}
@@ -68,23 +159,38 @@ const Index = () => {
         {/* Header */}
         <MissionHeader emergencyMode={emergencyMode} />
 
+        {/* Judge-Focused Tagline */}
+        <div className="glass-panel p-3 text-center">
+          <p className="text-sm text-primary font-mono tracking-wide">
+            "Every autonomous decision is logged, explained, and auditable."
+          </p>
+        </div>
+
         {/* Main 3-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Left Column - Controls & Status */}
+          {/* Left Column - Controls & Decision Logic */}
           <div className="lg:col-span-3 space-y-4">
             <ScenarioControls
               onJWalker={handleJWalker}
               onFog={handleFog}
               onTrafficSurge={handleTrafficSurge}
+              onDemoMode={handleDemoMode}
+              onReset={handleReset}
               fogActive={fogActive}
               trafficActive={trafficSurge}
               jWalkerActive={jWalkerActive}
+              demoRunning={demoRunning}
+            />
+            <DecisionLogic
+              pedestrianDistance={pedestrianDistance}
+              collisionProbability={collisionProbability}
+              actionTaken={actionTaken}
+              isActive={emergencyMode}
             />
             <SystemStatus 
               fogActive={fogActive} 
               emergencyMode={emergencyMode} 
             />
-            <PerceptionConfidence fogActive={fogActive} />
           </div>
 
           {/* Center Column - Main Viewport & Graphs */}
@@ -99,39 +205,50 @@ const Index = () => {
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="h-64">
-                <ResponseTimeGraph obstacleDetected={obstacleDetected} />
-              </div>
-              <div className="h-64">
-                <PriorityMatrix 
-                  emergencyMode={emergencyMode}
-                  fogMode={fogActive}
-                  trafficSurge={trafficSurge}
-                />
+              <ExplainableAIPanel
+                detectedObject={jWalkerActive ? "Pedestrian (J-Walker)" : "None"}
+                distance={pedestrianDistance}
+                collisionProbability={collisionProbability}
+                actionTaken={actionTaken}
+                reason={xaiReason}
+                isActive={emergencyMode}
+              />
+              <div className="space-y-4">
+                <div className="h-32">
+                  <ResponseTimeGraph obstacleDetected={obstacleDetected} />
+                </div>
+                <div className="h-32">
+                  <PriorityMatrix 
+                    emergencyMode={emergencyMode}
+                    fogMode={fogActive}
+                    trafficSurge={trafficSurge}
+                  />
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Right Column - Decision Feed */}
-          <div className="lg:col-span-3">
-            <div className="h-[calc(100vh-180px)] min-h-[600px]">
+          {/* Right Column - Decision Feed & Confidence */}
+          <div className="lg:col-span-3 space-y-4">
+            <div className="h-[calc(100vh-320px)] min-h-[400px]">
               <DecisionFeed 
                 emergencyEvent={jWalkerActive}
                 fogActive={fogActive}
                 intersectionReached={intersectionReached}
               />
             </div>
+            <PerceptionConfidence fogActive={fogActive} />
           </div>
         </div>
 
         {/* Footer */}
         <footer className="glass-panel p-3 flex items-center justify-between text-[10px] text-muted-foreground font-mono">
           <div className="flex items-center gap-4">
-            <span className="text-primary font-semibold">SIMVERSE XAI</span>
+            <span className="text-primary font-semibold">URBANDRIVE AI</span>
             <span>|</span>
-            <span>v3.2.1</span>
+            <span>v1.0.0</span>
             <span>|</span>
-            <span>BUILD: 2024.01.15</span>
+            <span>HACKATHON MVP</span>
             <span>|</span>
             <span className="text-neon-green">● CONNECTED</span>
           </div>
@@ -140,7 +257,7 @@ const Index = () => {
             <span>|</span>
             <span>FPS: 60</span>
             <span>|</span>
-            <span>URBAN AUTONOMY & SAFETY VALIDATION ENGINE</span>
+            <span>SMART AUTONOMOUS VEHICLE SIMULATOR</span>
           </div>
         </footer>
       </div>
