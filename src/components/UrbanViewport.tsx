@@ -21,13 +21,27 @@ interface UrbanViewportProps {
   fogActive: boolean;
   trafficSurge: boolean;
   jWalkerActive: boolean;
+  sensorViewEnabled: boolean;
   onObstacleDetected: () => void;
   onIntersectionReached?: () => void;
+  onPerceptionUpdate?: (data: {
+    pedestrianDistance: number;
+    timeToCollision: number;
+    relativeSpeed: number;
+  }) => void;
 }
 
-const UrbanViewport = ({ fogActive, trafficSurge, jWalkerActive, onObstacleDetected, onIntersectionReached }: UrbanViewportProps) => {
+const UrbanViewport = ({ 
+  fogActive, 
+  trafficSurge, 
+  jWalkerActive, 
+  sensorViewEnabled,
+  onObstacleDetected, 
+  onIntersectionReached,
+  onPerceptionUpdate 
+}: UrbanViewportProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [egoVehicle, setEgoVehicle] = useState({ x: 50, y: 60 });
+  const [egoVehicle, setEgoVehicle] = useState({ x: 50, y: 60, speed: 32 });
   const [lidarAngle, setLidarAngle] = useState(0);
   const [lidarPulseIntensity, setLidarPulseIntensity] = useState(1);
   const [vehicles, setVehicles] = useState<Vehicle[]>([
@@ -40,6 +54,7 @@ const UrbanViewport = ({ fogActive, trafficSurge, jWalkerActive, onObstacleDetec
   const [trafficLights, setTrafficLights] = useState<"red" | "yellow" | "green">("green");
   const [emergencyBraking, setEmergencyBraking] = useState(false);
   const [atIntersection, setAtIntersection] = useState(false);
+  const [pedestrianDistance, setPedestrianDistance] = useState(50);
 
   // Enhanced LiDAR rotation with pulsing
   useEffect(() => {
@@ -80,6 +95,39 @@ const UrbanViewport = ({ fogActive, trafficSurge, jWalkerActive, onObstacleDetec
     }, 100);
     return () => clearInterval(interval);
   }, []);
+
+  // Perception update - calculate distances and collision metrics
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const jwalker = pedestrians.find(p => p.isJWalking);
+      if (jwalker) {
+        const distance = Math.sqrt(
+          Math.pow((egoVehicle.x - jwalker.x) * 2, 2) + 
+          Math.pow((egoVehicle.y - jwalker.y) * 2, 2)
+        );
+        const scaledDistance = distance * 0.5; // Scale to reasonable meters
+        setPedestrianDistance(scaledDistance);
+        
+        // Calculate time to collision (simplified)
+        const relativeSpeed = egoVehicle.speed * 0.44704; // Convert MPH to m/s
+        const ttc = scaledDistance / relativeSpeed;
+        
+        onPerceptionUpdate?.({
+          pedestrianDistance: scaledDistance,
+          timeToCollision: ttc,
+          relativeSpeed: relativeSpeed
+        });
+      } else {
+        setPedestrianDistance(50);
+        onPerceptionUpdate?.({
+          pedestrianDistance: 50,
+          timeToCollision: 999,
+          relativeSpeed: 0
+        });
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [pedestrians, egoVehicle, onPerceptionUpdate]);
 
   // Traffic surge effect
   useEffect(() => {
@@ -125,10 +173,15 @@ const UrbanViewport = ({ fogActive, trafficSurge, jWalkerActive, onObstacleDetec
   return (
     <div 
       ref={containerRef}
-      className="relative w-full h-full glass-panel overflow-hidden"
+      className={`relative w-full h-full glass-panel overflow-hidden ${sensorViewEnabled ? "sensor-view" : ""}`}
     >
       {/* Grid background */}
-      <div className="absolute inset-0 grid-background opacity-30" />
+      <div className={`absolute inset-0 grid-background ${sensorViewEnabled ? "opacity-50" : "opacity-30"}`} />
+      
+      {/* Sensor View Overlay */}
+      {sensorViewEnabled && (
+        <div className="absolute inset-0 bg-background/40 z-5" />
+      )}
       
       {/* Fog/Static noise overlay */}
       <AnimatePresence>
@@ -180,13 +233,13 @@ const UrbanViewport = ({ fogActive, trafficSurge, jWalkerActive, onObstacleDetec
       {/* Roads with neon cyan path */}
       <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
         {/* Main horizontal road */}
-        <rect x="0" y="45" width="100" height="20" fill="hsl(220 25% 12%)" />
+        <rect x="0" y="45" width="100" height="20" fill={sensorViewEnabled ? "hsl(220 25% 8%)" : "hsl(220 25% 12%)"} />
         
         {/* Neon cyan vehicle path */}
         <motion.line 
           x1="0" y1="55" x2="40" y2="55" 
           stroke="hsl(195 100% 50%)" 
-          strokeWidth="0.8"
+          strokeWidth={sensorViewEnabled ? "1.5" : "0.8"}
           strokeOpacity={0.6}
           animate={{ strokeOpacity: [0.4, 0.8, 0.4] }}
           transition={{ duration: 2, repeat: Infinity }}
@@ -194,7 +247,7 @@ const UrbanViewport = ({ fogActive, trafficSurge, jWalkerActive, onObstacleDetec
         <motion.line 
           x1="60" y1="55" x2="100" y2="55" 
           stroke="hsl(195 100% 50%)" 
-          strokeWidth="0.8"
+          strokeWidth={sensorViewEnabled ? "1.5" : "0.8"}
           strokeOpacity={0.6}
           animate={{ strokeOpacity: [0.4, 0.8, 0.4] }}
           transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
@@ -204,7 +257,7 @@ const UrbanViewport = ({ fogActive, trafficSurge, jWalkerActive, onObstacleDetec
         <line x1="0" y1="55" x2="100" y2="55" stroke="hsl(45 100% 50%)" strokeWidth="0.3" strokeDasharray="3,2" />
         
         {/* Vertical road */}
-        <rect x="40" y="0" width="20" height="100" fill="hsl(220 25% 12%)" />
+        <rect x="40" y="0" width="20" height="100" fill={sensorViewEnabled ? "hsl(220 25% 8%)" : "hsl(220 25% 12%)"} />
         <line x1="50" y1="0" x2="50" y2="45" stroke="hsl(45 100% 50%)" strokeWidth="0.3" strokeDasharray="3,2" />
         <line x1="50" y1="65" x2="50" y2="100" stroke="hsl(45 100% 50%)" strokeWidth="0.3" strokeDasharray="3,2" />
         
@@ -237,22 +290,38 @@ const UrbanViewport = ({ fogActive, trafficSurge, jWalkerActive, onObstacleDetec
       {vehicles.map((vehicle) => (
         <motion.div
           key={vehicle.id}
-          className={`absolute w-8 h-5 ${getBoundingBoxColor(vehicle.type)} border-2 rounded-sm flex items-center justify-center`}
+          className={`absolute ${getBoundingBoxColor(vehicle.type)} ${
+            sensorViewEnabled ? "border-2" : "border-2"
+          } rounded-sm flex items-center justify-center`}
           style={{
             left: `${vehicle.x}%`,
             top: `${vehicle.y}%`,
             transform: `rotate(${vehicle.direction}deg)`,
+            width: sensorViewEnabled ? "32px" : "32px",
+            height: sensorViewEnabled ? "20px" : "20px",
           }}
           animate={{ x: [-2, 2, -2], y: [-1, 1, -1] }}
           transition={{ duration: 0.5, repeat: Infinity }}
         >
-          <div className={`w-6 h-3 rounded-sm ${
-            vehicle.type === "aggressive" ? "bg-neon-red/60" : 
-            vehicle.type === "following" ? "bg-neon-green/60" : "bg-primary/60"
-          }`} />
-          <span className="absolute -top-5 text-[8px] font-mono text-muted-foreground whitespace-nowrap">
-            {vehicle.type.toUpperCase()}
-          </span>
+          {sensorViewEnabled ? (
+            <>
+              {/* Sensor view - just bounding box with label */}
+              <span className="absolute -top-5 text-[8px] font-mono text-primary whitespace-nowrap border border-primary/50 px-1 bg-background/80 rounded">
+                VEH-{vehicle.id.toUpperCase()}
+              </span>
+              <div className="absolute inset-0 border border-dashed border-primary/30" />
+            </>
+          ) : (
+            <>
+              <div className={`w-6 h-3 rounded-sm ${
+                vehicle.type === "aggressive" ? "bg-neon-red/60" : 
+                vehicle.type === "following" ? "bg-neon-green/60" : "bg-primary/60"
+              }`} />
+              <span className="absolute -top-5 text-[8px] font-mono text-muted-foreground whitespace-nowrap">
+                {vehicle.type.toUpperCase()}
+              </span>
+            </>
+          )}
         </motion.div>
       ))}
 
@@ -271,29 +340,59 @@ const UrbanViewport = ({ fogActive, trafficSurge, jWalkerActive, onObstacleDetec
             <motion.div
               animate={{ opacity: [1, 0.3, 1], scale: [1, 1.1, 1] }}
               transition={{ duration: 0.3, repeat: Infinity }}
-              className="absolute -top-8 px-2 py-1 bg-accent/90 rounded text-[8px] font-mono text-accent-foreground font-bold whitespace-nowrap"
+              className="absolute -top-10 px-2 py-1 bg-accent/90 rounded text-[8px] font-mono text-accent-foreground font-bold whitespace-nowrap"
             >
-              ⚠ COLLISION RISK
+              ⚠ COLLISION RISK: HIGH
             </motion.div>
           )}
-          <motion.div 
-            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-              ped.isJWalking 
-                ? "border-accent bg-accent/40" 
-                : "border-neon-green bg-neon-green/40"
-            }`}
-            animate={ped.isJWalking ? { 
-              boxShadow: ["0 0 0 0 hsl(var(--accent))", "0 0 20px 5px hsl(var(--accent) / 0.5)", "0 0 0 0 hsl(var(--accent))"]
-            } : {}}
-            transition={{ duration: 0.5, repeat: ped.isJWalking ? Infinity : 0 }}
-          >
-            <span className="text-[10px]">🚶</span>
-          </motion.div>
+          
+          {sensorViewEnabled ? (
+            // Sensor view - bounding box representation
+            <motion.div 
+              className={`w-6 h-6 border-2 ${
+                ped.isJWalking 
+                  ? "border-accent bg-accent/20" 
+                  : "border-neon-green bg-neon-green/20"
+              } flex items-center justify-center`}
+              animate={ped.isJWalking ? { 
+                boxShadow: ["0 0 0 0 hsl(var(--accent))", "0 0 20px 5px hsl(var(--accent) / 0.5)", "0 0 0 0 hsl(var(--accent))"]
+              } : {}}
+              transition={{ duration: 0.5, repeat: ped.isJWalking ? Infinity : 0 }}
+            >
+              <span className={`text-[8px] font-mono ${ped.isJWalking ? "text-accent" : "text-neon-green"}`}>P</span>
+            </motion.div>
+          ) : (
+            <motion.div 
+              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                ped.isJWalking 
+                  ? "border-accent bg-accent/40" 
+                  : "border-neon-green bg-neon-green/40"
+              }`}
+              animate={ped.isJWalking ? { 
+                boxShadow: ["0 0 0 0 hsl(var(--accent))", "0 0 20px 5px hsl(var(--accent) / 0.5)", "0 0 0 0 hsl(var(--accent))"]
+              } : {}}
+              transition={{ duration: 0.5, repeat: ped.isJWalking ? Infinity : 0 }}
+            >
+              <span className="text-[10px]">🚶</span>
+            </motion.div>
+          )}
+          
           <span className={`mt-1 text-[7px] font-mono whitespace-nowrap ${
             ped.isJWalking ? "text-accent font-bold" : "text-muted-foreground"
           }`}>
             {ped.isJWalking ? "J-WALKER" : "PED"}
           </span>
+          
+          {/* Distance indicator for sensor view */}
+          {sensorViewEnabled && ped.isJWalking && (
+            <motion.div
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 0.5, repeat: Infinity }}
+              className="absolute -bottom-6 text-[8px] font-mono text-accent"
+            >
+              {pedestrianDistance.toFixed(1)}m
+            </motion.div>
+          )}
         </motion.div>
       ))}
 
@@ -363,13 +462,26 @@ const UrbanViewport = ({ fogActive, trafficSurge, jWalkerActive, onObstacleDetec
 
         {/* Ego Vehicle */}
         <motion.div 
-          className="relative w-14 h-8 bg-gradient-to-r from-primary to-cyber-glow rounded-md shadow-[0_0_25px_hsl(var(--primary)/0.6)] border border-primary/60"
+          className={`relative w-14 h-8 rounded-md shadow-[0_0_25px_hsl(var(--primary)/0.6)] border border-primary/60 ${
+            sensorViewEnabled 
+              ? "bg-primary/30 border-primary" 
+              : "bg-gradient-to-r from-primary to-cyber-glow"
+          }`}
           animate={emergencyBraking ? { x: [0, -4, 4, -2, 2, 0] } : {}}
           transition={{ duration: 0.2, repeat: emergencyBraking ? 3 : 0 }}
         >
           <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 bg-cyber-glow-intense rounded-full animate-pulse shadow-[0_0_10px_hsl(var(--primary))]" />
-          <div className="absolute top-1.5 left-1.5 w-2 h-1.5 bg-foreground/90 rounded-sm" />
-          <div className="absolute top-1.5 right-1.5 w-2 h-1.5 bg-foreground/90 rounded-sm" />
+          {!sensorViewEnabled && (
+            <>
+              <div className="absolute top-1.5 left-1.5 w-2 h-1.5 bg-foreground/90 rounded-sm" />
+              <div className="absolute top-1.5 right-1.5 w-2 h-1.5 bg-foreground/90 rounded-sm" />
+            </>
+          )}
+          {sensorViewEnabled && (
+            <span className="absolute inset-0 flex items-center justify-center text-[8px] font-mono text-primary font-bold">
+              EGO
+            </span>
+          )}
           {atIntersection && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -384,7 +496,9 @@ const UrbanViewport = ({ fogActive, trafficSurge, jWalkerActive, onObstacleDetec
 
       {/* Viewport HUD */}
       <div className="absolute top-3 left-3 flex flex-col gap-1">
-        <div className="text-[10px] font-mono text-primary">SIMVERSE_VIEWPORT_v3.0</div>
+        <div className="text-[10px] font-mono text-primary">
+          {sensorViewEnabled ? "SENSOR_VIEW_MODE" : "URBANDRIVE_VIEWPORT"}
+        </div>
         <div className="text-[10px] font-mono text-muted-foreground">
           LIDAR: {(lidarAngle / 3.6).toFixed(0)}° | RES: 0.1m | FPS: 60
         </div>
@@ -398,6 +512,24 @@ const UrbanViewport = ({ fogActive, trafficSurge, jWalkerActive, onObstacleDetec
           OBJECTS: {vehicles.length + pedestrians.length}
         </div>
       </div>
+
+      {/* Speed indicator */}
+      <div className="absolute bottom-3 left-3 flex items-center gap-2">
+        <div className="text-[10px] font-mono text-muted-foreground">SPEED:</div>
+        <div className={`text-sm font-mono font-bold ${emergencyBraking ? "text-accent" : "text-primary"}`}>
+          {emergencyBraking ? "0" : egoVehicle.speed} MPH
+        </div>
+      </div>
+
+      {/* Perception metrics */}
+      {sensorViewEnabled && (
+        <div className="absolute bottom-3 right-3 p-2 bg-background/80 border border-primary/30 rounded text-[9px] font-mono">
+          <div className="text-muted-foreground">NEAREST OBJ:</div>
+          <div className={`text-sm font-bold ${pedestrianDistance < 15 ? "text-accent" : "text-neon-green"}`}>
+            {pedestrianDistance.toFixed(1)}m
+          </div>
+        </div>
+      )}
 
       {/* Scanline effect */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
